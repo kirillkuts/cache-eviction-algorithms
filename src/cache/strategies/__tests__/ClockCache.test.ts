@@ -1,4 +1,5 @@
-import { ClockCache } from '../../../src/cache/strategies/ClockCache';
+import { ClockCache } from "../ClockCache";
+
 
 describe('ClockCache', () => {
   let cache: ClockCache<string, number>;
@@ -68,22 +69,22 @@ describe('ClockCache', () => {
       cache.set('a', 1);
       cache.set('b', 2);
       cache.set('c', 3);
-      
+
       // Access 'a' multiple times to increase chances of keeping it
       cache.get('a');
       cache.get('a');
       cache.get('a');
-      
+
       // Count how many items remain before adding new one
       const itemsBefore = ['a', 'b', 'c'].filter(key => cache.has(key));
       expect(itemsBefore).toHaveLength(3);
-      
+
       // Add new item, one should be evicted
       cache.set('d', 4);
-      
+
       expect(cache.size).toBe(3);
       expect(cache.has('d')).toBe(true);
-      
+
       // At least one of the original items should be gone
       const itemsAfter = ['a', 'b', 'c'].filter(key => cache.has(key));
       expect(itemsAfter.length).toBe(2);
@@ -135,10 +136,10 @@ describe('ClockCache', () => {
 
     test('should work with capacity of 1', () => {
       const smallCache = new ClockCache<string, number>(1);
-      
+
       smallCache.set('a', 1);
       expect(smallCache.get('a')).toBe(1);
-      
+
       smallCache.set('b', 2); // Should evict 'a'
       expect(smallCache.get('a')).toBeUndefined();
       expect(smallCache.get('b')).toBe(2);
@@ -146,13 +147,13 @@ describe('ClockCache', () => {
 
     test('should handle multiple evictions correctly', () => {
       const smallCache = new ClockCache<string, number>(2);
-      
+
       smallCache.set('a', 1);
       smallCache.set('b', 2);
       smallCache.set('c', 3);
       smallCache.set('d', 4);
       smallCache.set('e', 5);
-      
+
       expect(smallCache.size).toBe(2);
       expect(smallCache.stats.evictions).toBe(3);
     });

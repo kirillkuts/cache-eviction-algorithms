@@ -1,4 +1,5 @@
 import { CacheWithStats, CacheStatistics } from '../base/Cache';
+import { pseudoRandomBytes } from "node:crypto";
 
 interface ClockNode<K, V> {
   key: K;
@@ -26,7 +27,7 @@ export class ClockCache<K, V> implements CacheWithStats<K, V> {
     if (_capacity <= 0) {
       throw new Error('Capacity must be positive');
     }
-    
+
     this.buffer = new Array(_capacity);
     for (let i = 0; i < _capacity; i++) {
       this.buffer[i] = {
@@ -51,41 +52,80 @@ export class ClockCache<K, V> implements CacheWithStats<K, V> {
   }
 
   get(key: K): V | undefined {
-    // TODO: Implement Clock cache get operation
-    // 1. Look up key in keyToIndex map
-    // 2. If not found or slot invalid, increment misses and return undefined
-    // 3. If found, increment hits, set reference bit to true, return value
-    throw new Error('Method not implemented');
+    const index = this.keyToIndex.get(key);
+
+    if (index === undefined) {
+      this.stats.misses++;
+      return undefined;
+    }
+
+    const value = this.buffer[index];
+
+    if ( !value.valid ) {
+      this.stats.misses++;
+      return undefined;
+    }
+
+    this.stats.hits++;
+    return value.value;
   }
 
   set(key: K, value: V): void {
-    // TODO: Implement Clock cache set operation
-    // 1. Check if key already exists and update if so
-    // 2. If cache not full, find empty slot and place item
-    // 3. If cache full, use clock algorithm to find victim:
-    //    - Move clock hand, checking reference bits
-    //    - If reference bit is 0, evict this item
-    //    - If reference bit is 1, set to 0 and continue
-    // 4. Place new item in victim's slot
-    throw new Error('Method not implemented');
+    const existingKey = this.keyToIndex.get(key);
+    if (existingKey !== undefined) {
+      this.buffer[existingKey].value = value;
+      this.buffer[existingKey].valid = true;
+      this.buffer[existingKey].referenceBit = true;
+
+      return;
+    }
+
+    let position;
+
+    if ( this.size < this.capacity ) {
+      position = this.findEmptySlot();
+    } else {
+      position = this.findVictim();
+    }
+
+    this.buffer[position] = {
+      key,
+      value,
+      referenceBit: true,
+      valid: true
+    };
+
+    this.keyToIndex.set(key, position);
+    this._size++;
   }
 
   delete(key: K): boolean {
-    // TODO: Implement delete operation
-    // 1. Look up key in keyToIndex map
-    // 2. If found, mark slot as invalid, remove from map, decrement size
-    // 3. Return whether item was found and deleted
-    throw new Error('Method not implemented');
+    const existingKey = this.keyToIndex.get(key);
+
+    if (existingKey !== undefined) {
+      this.buffer[existingKey].valid = false;
+      this.buffer[existingKey].referenceBit = false;
+      this.keyToIndex.delete(key);
+      this._size--;
+    }
+
+    return existingKey !== undefined;
   }
 
   has(key: K): boolean {
-    // TODO: Implement - check if key exists and slot is valid
-    throw new Error('Method not implemented');
+    const existingKey = this.keyToIndex.get(key);
+
+    if (existingKey !== undefined) {
+      return this.buffer[existingKey].valid
+    }
+
+    return false;
   }
 
   clear(): void {
-    // TODO: Implement - clear all items and reset clock hand
-    throw new Error('Method not implemented');
+    this.keyToIndex.clear();
+    this.buffer.forEach((value, key) => value.valid = false);
+    this._size = 0;
   }
 
   resetStats(): void {
@@ -95,16 +135,28 @@ export class ClockCache<K, V> implements CacheWithStats<K, V> {
   }
 
   private findEmptySlot(): number {
-    // TODO: Implement - find first invalid slot in buffer
-    throw new Error('Method not implemented');
+    return this.buffer.findIndex(i => !i.valid);
   }
 
   private findVictim(): number {
-    // TODO: Implement Clock algorithm for victim selection
-    // 1. Start from current clock hand position
-    // 2. If current slot has reference bit = 0, return this index
-    // 3. If reference bit = 1, set it to 0 and advance clock hand
-    // 4. Continue until victim found
-    throw new Error('Method not implemented');
+    while(true) {
+      const item = this.buffer[this.clockHand];
+
+      if ( !item.referenceBit ) {
+        this.delete(item.key);
+        this.stats.evictions++;
+        return this.clockHand;
+      }
+
+      item.referenceBit = false;
+
+      this.clockHand++;
+
+      if ( this.clockHand === this.capacity ) {
+        this.clockHand = 0;
+      }
+    }
+
+    return -1;
   }
 }
