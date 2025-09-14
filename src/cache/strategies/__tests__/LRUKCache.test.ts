@@ -1,4 +1,4 @@
-import { LRUKCache } from '../../../src/cache/strategies/LRUKCache';
+import { LRUKCache } from "../LRUKCache";
 
 describe('LRUKCache', () => {
   let cache: LRUKCache<string, number>;
@@ -67,7 +67,7 @@ describe('LRUKCache', () => {
     test('should prefer evicting items with fewer than K accesses', () => {
       cache.set('a', 1);
       cache.get('a'); // 'a' now has 2 accesses (set + get)
-      
+
       cache.set('b', 2); // 'b' has 1 access
       cache.set('c', 3); // 'c' has 1 access
       cache.set('d', 4); // Should evict 'b' or 'c', not 'a'
@@ -78,16 +78,16 @@ describe('LRUKCache', () => {
 
     test('should track access times correctly', () => {
       cache.set('a', 1);
-      
+
       // Access 'a' multiple times
       cache.get('a');
       cache.get('a');
-      
+
       // Fill cache
       cache.set('b', 2);
       cache.set('c', 3);
       cache.set('d', 4); // Should not evict 'a'
-      
+
       expect(cache.get('a')).toBe(1); // 'a' should still be there
     });
   });
@@ -95,11 +95,11 @@ describe('LRUKCache', () => {
   describe('LRU-K with different K values', () => {
     test('should work with K=1 (equivalent to LRU)', () => {
       const lru1Cache = new LRUKCache<string, number>(2, 1);
-      
+
       lru1Cache.set('a', 1);
       lru1Cache.set('b', 2);
       lru1Cache.set('c', 3); // Should evict 'a'
-      
+
       expect(lru1Cache.get('a')).toBeUndefined();
       expect(lru1Cache.get('b')).toBe(2);
       expect(lru1Cache.get('c')).toBe(3);
@@ -107,14 +107,14 @@ describe('LRUKCache', () => {
 
     test('should work with K=3', () => {
       const lru3Cache = new LRUKCache<string, number>(2, 3);
-      
+
       lru3Cache.set('a', 1);
       lru3Cache.get('a');
       lru3Cache.get('a'); // 'a' now has 3 accesses
-      
+
       lru3Cache.set('b', 2); // 'b' has 1 access
       lru3Cache.set('c', 3); // Should evict 'b', not 'a'
-      
+
       expect(lru3Cache.get('a')).toBe(1);
       expect(lru3Cache.get('b')).toBeUndefined();
       expect(lru3Cache.get('c')).toBe(3);
@@ -171,10 +171,10 @@ describe('LRUKCache', () => {
 
     test('should work with capacity of 1', () => {
       const smallCache = new LRUKCache<string, number>(1, 2);
-      
+
       smallCache.set('a', 1);
       expect(smallCache.get('a')).toBe(1);
-      
+
       smallCache.set('b', 2); // Should evict 'a'
       expect(smallCache.get('a')).toBeUndefined();
       expect(smallCache.get('b')).toBe(2);

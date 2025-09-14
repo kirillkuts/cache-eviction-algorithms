@@ -1,4 +1,5 @@
 import { CacheWithStats, CacheStatistics } from '../base/Cache';
+import { IndexedMinHeap } from "../../utils/heap/heap";
 
 interface LRUKNode<K, V> {
   key: K;
@@ -8,6 +9,10 @@ interface LRUKNode<K, V> {
 
 export class LRUKCache<K, V> implements CacheWithStats<K, V> {
   private cache = new Map<K, LRUKNode<K, V>>();
+  private heap: IndexedMinHeap;
+  private counter = 0;
+  private keysToId = new Map<K, number>();
+  private idToKeys = new Map<number, K>();
   private _stats: CacheStatistics = {
     hits: 0,
     misses: 0,
@@ -28,6 +33,8 @@ export class LRUKCache<K, V> implements CacheWithStats<K, V> {
     if (k <= 0) {
       throw new Error('K must be positive');
     }
+
+    this.heap = new IndexedMinHeap(k);
   }
 
   get size(): number {
@@ -43,24 +50,53 @@ export class LRUKCache<K, V> implements CacheWithStats<K, V> {
   }
 
   get(key: K): V | undefined {
-    // TODO: Implement LRU-K get operation
-    // 1. Look up key in cache map
-    // 2. If not found, increment misses and return undefined
-    // 3. If found, increment hits, update access time, return value
-    throw new Error('Method not implemented');
+    this.counter++;
+
+    const node = this.cache.get(key);
+
+    if ( node === undefined ) {
+      this.stats.misses++;
+    } else {
+      this.stats.hits++;
+      this.updateAccessTime(node);
+    }
+
+    return node?.value;
   }
 
   set(key: K, value: V): void {
-    // TODO: Implement LRU-K set operation
-    // 1. Check if key already exists and update if so
-    // 2. If cache at capacity, find victim using LRU-K algorithm
-    // 3. Create new node with current timestamp in accessTimes array
-    // 4. Add to cache map
-    throw new Error('Method not implemented');
+    this.counter++;
+
+    const node = this.cache.get(key);
+
+    // key already exist
+    if ( node !== undefined ) {
+      this.updateAccessTime(node);
+      node.value = value;
+      return;
+    }
+
+    // need evict
+    if ( this.size === this.capacity ) {
+      this.evict();
+    }
+
+    const newNode: LRUKNode<K, V> = {
+      key,
+      value,
+      accessTimes: [this.counter],
+    }
+
+    this.idToKeys.set(this.counter, newNode.key);
+    this.keysToId.set(newNode.key, this.counter);
+
+    this.heap.insert(this.counter, Number.MIN_SAFE_INTEGER);
+
+    this.cache.set(key, newNode);
+
   }
 
   delete(key: K): boolean {
-    // TODO: Implement delete operation
     return this.cache.delete(key);
   }
 
@@ -70,6 +106,7 @@ export class LRUKCache<K, V> implements CacheWithStats<K, V> {
 
   clear(): void {
     this.cache.clear();
+    this.heap = new IndexedMinHeap(this.capacity);
   }
 
   resetStats(): void {
@@ -79,20 +116,34 @@ export class LRUKCache<K, V> implements CacheWithStats<K, V> {
   }
 
   private updateAccessTime(node: LRUKNode<K, V>): void {
-    // TODO: Implement access time tracking
-    // 1. Add current timestamp to accessTimes array
-    // 2. If array exceeds K elements, remove oldest (shift)
-    // This maintains the K most recent access times
-    throw new Error('Method not implemented');
+    node.accessTimes.unshift(this.counter);
+
+    if ( node.accessTimes.length > this.k ) {
+      node.accessTimes.pop();
+    }
+
+    const id = this.keysToId.get(node.key);
+
+    if ( id !== undefined ) {
+      const kValue = node.accessTimes.length === this.k ? node.accessTimes.at(-1)! : Number.MIN_SAFE_INTEGER;
+      this.heap.increaseKey(id, kValue);
+    }
   }
 
-  private findVictim(): K | null {
-    // TODO: Implement LRU-K victim selection algorithm
-    // 1. Scan all nodes in cache
-    // 2. For nodes with < K accesses, compare first access time (oldest wins)
-    // 3. For nodes with K accesses, compare Kth access time (oldest wins)
-    // 4. Prefer evicting nodes with fewer accesses over those with K accesses
-    // 5. Return key of victim node
-    throw new Error('Method not implemented');
+  private evict(): K | null {
+    const idToEvict = this.heap.pop();
+    const keyToEvict = this.idToKeys.get(idToEvict);
+
+    if ( keyToEvict == undefined ) {
+      return null;
+    }
+
+    this.cache.delete(keyToEvict);
+    this.idToKeys.delete(idToEvict);
+    this.keysToId.delete(keyToEvict);
+
+    this.stats.evictions++;
+
+    return keyToEvict;
   }
 }
