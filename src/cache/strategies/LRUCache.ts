@@ -9,6 +9,7 @@ interface LRUNode<K, V> {
 export class LRUCache<K, V> implements CacheWithStats<K, V> {
   private keyToNode = new Map<K, DoublyLinkedListNode<LRUNode<K, V>>>();
   private list = new DoublyLinkedList<LRUNode<K, V>>();
+
   private _stats: CacheStatistics = {
     hits: 0,
     misses: 0,
@@ -26,8 +27,7 @@ export class LRUCache<K, V> implements CacheWithStats<K, V> {
   }
 
   get size(): number {
-    // TODO: Implement - return the current number of items in cache
-    throw new Error('Method not implemented');
+    return this.list.size;
   }
 
   get capacity(): number {
@@ -39,38 +39,71 @@ export class LRUCache<K, V> implements CacheWithStats<K, V> {
   }
 
   get(key: K): V | undefined {
-    // TODO: Implement LRU get operation
-    // 1. Check if key exists in keyToNode map
-    // 2. If not found, increment misses and return undefined
-    // 3. If found, increment hits, move node to front of list, return value
-    throw new Error('Method not implemented');
+    const node = this.keyToNode.get(key);
+
+    if (node) {
+      this.list.moveToFirst(node);
+      this.stats.hits++;
+    } else {
+      this.stats.misses++;
+    }
+
+    return node?.data?.value;
   }
 
   set(key: K, value: V): void {
-    // TODO: Implement LRU set operation
-    // 1. Check if key already exists
-    // 2. If exists, update value and move to front
-    // 3. If not exists and at capacity, evict least recently used (last) item
-    // 4. Add new item to front of list and update maps
-    throw new Error('Method not implemented');
+    const node = this.keyToNode.get(key);
+
+    // node already exists
+    if ( node !== undefined ) {
+        node.data.value = value;
+        this.list.moveToFirst(node);
+
+        return;
+    }
+
+    // node does not exist
+    if ( this.size == this.capacity ) {
+      const node = this.list.removeLast();
+
+      if (!node) {
+        return;
+      }
+
+      this.keyToNode.delete(node.key);
+
+      this.stats.evictions++;
+    }
+
+    const newListItem: LRUNode<K, V> = {
+      key: key,
+      value: value,
+    };
+
+    const newNode = this.list.addFirst(newListItem);
+    this.keyToNode.set(key, newNode);
   }
 
   delete(key: K): boolean {
-    // TODO: Implement delete operation
-    // 1. Check if key exists
-    // 2. If exists, remove from both list and map, return true
-    // 3. If not exists, return false
-    throw new Error('Method not implemented');
+    const node = this.keyToNode.get(key);
+
+    if ( !node ) {
+      return false;
+    }
+
+    this.list.remove(node);
+    this.keyToNode.delete(key);
+
+    return true;
   }
 
   has(key: K): boolean {
-    // TODO: Implement - check if key exists in cache
-    throw new Error('Method not implemented');
+    return this.keyToNode.has(key);
   }
 
   clear(): void {
-    // TODO: Implement - clear all items from cache
-    throw new Error('Method not implemented');
+    this.keyToNode.clear();
+    this.list.clear();
   }
 
   resetStats(): void {

@@ -1,4 +1,4 @@
-import { LRUCache } from '../../../src/cache/strategies/LRUCache';
+import { LRUCache } from "../LRUCache";
 
 describe('LRUCache', () => {
   let cache: LRUCache<string, number>;
@@ -68,7 +68,7 @@ describe('LRUCache', () => {
       cache.set('a', 1);
       cache.set('b', 2);
       cache.set('c', 3);
-      
+
       cache.get('a'); // Make 'a' most recently used
       cache.set('d', 4); // Should evict 'b', not 'a'
 
@@ -82,7 +82,7 @@ describe('LRUCache', () => {
       cache.set('a', 1);
       cache.set('b', 2);
       cache.set('c', 3);
-      
+
       cache.set('a', 10); // Update 'a' and make it most recently used
       cache.set('d', 4); // Should evict 'b', not 'a'
 
@@ -138,10 +138,10 @@ describe('LRUCache', () => {
 
     test('should work with capacity of 1', () => {
       const smallCache = new LRUCache<string, number>(1);
-      
+
       smallCache.set('a', 1);
       expect(smallCache.get('a')).toBe(1);
-      
+
       smallCache.set('b', 2); // Should evict 'a'
       expect(smallCache.get('a')).toBeUndefined();
       expect(smallCache.get('b')).toBe(2);
